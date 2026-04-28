@@ -39,15 +39,21 @@ jobs:
         run: pip install zizmor
 
       - name: Run zizmor (SARIF)
-        # Exit codes: 0 = no findings, 1 = findings, 2 = fatal error.
-        # Capture exit code so findings FAIL the job (block merge via required check),
-        # while still producing a valid SARIF file for the upload step.
+        # NOTE: --format sarif forces exit 0 (SARIF is for downstream upload, not CI pass/fail).
+        # Fix: run zizmor twice — once without SARIF to capture the real exit code,
+        # then once with --format sarif --no-exit-codes to generate the SARIF artifact.
         run: |
+          set +e
+          zizmor \
+            --gh-token "${{ secrets.GITHUB_TOKEN }}" \
+            . 2>&1
+          ZIZMOR_EXIT=$?
+          set -e
           zizmor \
             --gh-token "${{ secrets.GITHUB_TOKEN }}" \
             --format sarif \
-            . > zizmor-results.sarif 2>/dev/null
-          ZIZMOR_EXIT=$?
+            --no-exit-codes \
+            . > zizmor-results.sarif 2>/dev/null || true
           python3 -c "import json; json.load(open('zizmor-results.sarif'))" 2>/dev/null || \
             echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"zizmor","rules":[]}},"results":[]}]}' > zizmor-results.sarif
           exit $ZIZMOR_EXIT
