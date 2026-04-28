@@ -1,0 +1,50 @@
+# OSSF Scorecard — Supply chain security posture check
+# Evaluates 20+ checks: dependency pinning, branch protection, token permissions,
+# Dependabot configuration, dangerous workflows, signing, etc.
+#
+# Results appear in:
+#   - Repo → Security → Code scanning (SARIF)
+#   - https://securityscorecards.dev (public badge + API)
+#
+# Free on public repos — publish_results: true requires public repo.
+
+name: scorecard
+
+on:
+  schedule:
+    - cron: '30 1 * * 1'     # Weekly: Monday 01:30 UTC
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  analysis:
+    name: Scorecard Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload SARIF
+      id-token: write          # publish signed results to deps.dev
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Run OSSF Scorecard
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a  # v2.4.3
+        with:
+          results_file: scorecard-results.sarif
+          results_format: sarif
+          # publish_results: true posts badge to securityscorecards.dev
+          # Requires: id-token: write + public repo
+          publish_results: true
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a  # v3
+        if: always()
+        with:
+          sarif_file: scorecard-results.sarif
+          category: scorecard

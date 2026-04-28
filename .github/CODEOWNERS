@@ -1,0 +1,6 @@
+# CODEOWNERS — all changes require review from the security team
+# Applies to all files unless overridden below.
+*                   @lhoe
+
+# Workflow files are especially sensitive (PPE risk) — require explicit approval
+.github/workflows/  @lhoe

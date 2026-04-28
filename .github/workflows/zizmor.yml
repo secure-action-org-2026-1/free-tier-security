@@ -1,0 +1,53 @@
+# Zizmor — Static analysis for GitHub Actions workflow files
+# Detects: script injection, pull_request_target + fork checkout, unpinned actions,
+# missing permissions, dangerous use of GITHUB_ENV / GITHUB_PATH (CICD-SEC-04 coverage)
+#
+# Results appear in Repo → Security → Code scanning (SARIF upload)
+# Free on public repos: no GitHub Code Security license required.
+
+name: zizmor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+
+# Minimal permissions — only what each job needs
+permissions: {}
+
+jobs:
+  zizmor:
+    name: Workflow SAST
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload SARIF to Security tab
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor (SARIF)
+        # zizmor is a Rust binary, distributed as a Python package via PyPI.
+        # uvx downloads + runs it in an isolated env — no persistent install.
+        # --gh-token enables GitHub API calls for additional context.
+        run: |
+          uvx zizmor \
+            --gh-token "${{ secrets.GITHUB_TOKEN }}" \
+            --format sarif \
+            . > zizmor-results.sarif || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a  # v3
+        if: always()
+        with:
+          sarif_file: zizmor-results.sarif
+          category: zizmor

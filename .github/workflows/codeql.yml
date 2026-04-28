@@ -1,0 +1,53 @@
+# CodeQL — Free static analysis for public repos (GitHub Code Security not required)
+# Languages: add/remove from the matrix as needed.
+# Results appear in Repo → Security → Code scanning.
+#
+# This demonstrates GitHub's native SAST, complementing zizmor (workflow-specific SAST).
+
+name: codeql
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '15 2 * * 3'    # Weekly: Wednesday 02:15 UTC
+
+permissions: {}
+
+jobs:
+  analyze:
+    name: CodeQL Analysis (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - python       # add: javascript, typescript, java, go, ruby, etc.
+        # CodeQL query suite: 'default' covers OWASP Top 10 + CWE top 25
+        # Use 'security-extended' for broader coverage (more false positives)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a  # v3
+        with:
+          languages: ${{ matrix.language }}
+          # queries: security-extended   # uncomment for broader coverage
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a  # v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a  # v3
+        with:
+          category: codeql-${{ matrix.language }}
