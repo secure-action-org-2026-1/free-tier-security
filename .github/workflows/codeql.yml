@@ -16,6 +16,10 @@ on:
 permissions: {}
 
 jobs:
+  # Scan GitHub Actions workflow files — always present in this repo.
+  # For application code (Python, JS, Go, etc.), add a second matrix entry once
+  # source code exists. CodeQL exits 32 ("no source found") if the language is
+  # specified but no matching files exist, so we gate each entry with hashFiles.
   analyze:
     name: CodeQL Analysis (${{ matrix.language }})
     runs-on: ubuntu-latest
@@ -27,10 +31,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language:
-          - python       # add: javascript, typescript, java, go, ruby, etc.
-        # CodeQL query suite: 'default' covers OWASP Top 10 + CWE top 25
-        # Use 'security-extended' for broader coverage (more false positives)
+        include:
+          # GitHub Actions workflow SAST (always present)
+          - language: actions
+            files_glob: '.github/workflows/**'
+          # Python — only run if .py files exist in the repo
+          # - language: python
+          #   files_glob: '**/*.py'
+          # JavaScript/TypeScript — uncomment when needed
+          # - language: javascript-typescript
+          #   files_glob: '**/*.{js,ts,jsx,tsx}'
 
     steps:
       - name: Checkout
@@ -42,7 +52,7 @@ jobs:
         uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a  # v3
         with:
           languages: ${{ matrix.language }}
-          # queries: security-extended   # uncomment for broader coverage
+          # queries: security-extended   # broader coverage, more false positives
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a  # v3
