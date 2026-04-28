@@ -1,0 +1,10 @@
+# Gitleaks configuration
+# Custom rules for this repository's secret scanning test suite.
+
+title = "free-tier-security gitleaks config"
+
+[[rules]]
+id = "test-api-key"
+description = "Test API key marker used in secret-scan CI test (T4)"
+regex = '''FTSEC-APIKEY-[A-Z0-9]{32}'''
+tags = ["test", "api-key"]
