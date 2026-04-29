@@ -8,3 +8,7 @@ id = "test-api-key"
 description = "Test API key marker used in secret-scan CI test (T4)"
 regex = '''FTSEC-APIKEY-[A-Z0-9]{32}'''
 tags = ["test", "api-key"]
+
+[allowlist]
+  description = "Known test fixture commits — see test plan T4"
+  commits = ["81e10669b338ba92e869f11a2dc0c557b8aca90e"]
