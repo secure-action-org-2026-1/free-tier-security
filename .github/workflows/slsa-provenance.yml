@@ -1,5 +1,13 @@
-# SLSA Provenance - Generate SLSA Level 3 provenance for release artifacts
-# Uses the SLSA GitHub Generator with Sigstore keyless signing.
+# Artifact Provenance — SLSA-compliant signed attestation for release artifacts
+#
+# Uses GitHub's native actions/attest-build-provenance (step-level action).
+# Generates a Sigstore-signed SLSA provenance attestation stored in the repo's
+# attestations registry — no external reusable workflow call required.
+#
+# Verify after release:
+#   gh attestation verify artifact.tar.gz \
+#     --owner secure-action-org-2026-1
+#
 # Trigger: push a semver tag, e.g.:  git tag v1.0.0 && git push --tags
 
 name: slsa-provenance
@@ -9,53 +17,41 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
-# id-token: write must be at workflow level for OIDC when calling external reusable workflows
-permissions:
-  id-token: write
-  contents: write
-  actions: read
+permissions: {}
 
 jobs:
-  build:
-    name: Build artifact
+  build-and-attest:
+    name: Build and attest artifact
     runs-on: ubuntu-latest
-    outputs:
-      hashes: ${{ steps.hash.outputs.hashes }}
     permissions:
-      contents: read
+      contents: write     # create GitHub release + upload artifact
+      id-token: write     # Sigstore OIDC keyless signing
+      attestations: write # write provenance attestation to repo
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           persist-credentials: false
 
-      - name: Build
-        run: |
-          tar czf artifact.tar.gz README.md .github/
+      - name: Build artifact
+        run: tar czf artifact.tar.gz README.md .github/
 
-      - name: Compute SHA-256 hashes
-        id: hash
-        run: |
-          HASHES=$(sha256sum artifact.tar.gz | base64 -w0)
-          echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - name: Generate SLSA provenance attestation
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
+        id: attest
         with:
-          name: artifact
-          path: artifact.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+          subject-path: artifact.tar.gz
 
-  provenance:
-    needs: [build]
-    permissions:
-      actions: read
-      id-token: write
-      contents: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
-    with:
-      base64-subjects: "${{ needs.build.outputs.hashes }}"
-      upload-assets: true
+      - name: Create GitHub release with artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" artifact.tar.gz \
+            --title "$TAG" \
+            --notes "Artifact with SLSA provenance attestation.
+
+Verify with:
+  gh attestation verify artifact.tar.gz --owner secure-action-org-2026-1"
 
