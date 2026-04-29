@@ -1,0 +1,9 @@
+{
+  "name": "free-tier-security",
+  "version": "0.0.1",
+  "description": "CI security controls demo — see README",
+  "private": true,
+  "scripts": {
+    "test": "echo \"no tests\" && exit 0"
+  }
+}
