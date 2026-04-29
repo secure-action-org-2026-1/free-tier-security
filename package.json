@@ -5,5 +5,8 @@
   "private": true,
   "scripts": {
     "test": "echo \"no tests\" && exit 0"
+  },
+  "dependencies": {
+    "lodash": "4.17.15"
   }
 }
