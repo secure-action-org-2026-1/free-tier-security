@@ -1,14 +1,11 @@
-# Artifact Provenance — SLSA-compliant signed attestation for release artifacts
-#
+# Artifact provenance - SLSA-compliant signed attestation for release artifacts.
 # Uses GitHub's native actions/attest-build-provenance (step-level action).
-# Generates a Sigstore-signed SLSA provenance attestation stored in the repo's
-# attestations registry — no external reusable workflow call required.
+# Generates a Sigstore-signed attestation stored in the repo's attestations registry.
 #
 # Verify after release:
-#   gh attestation verify artifact.tar.gz \
-#     --owner secure-action-org-2026-1
+#   gh attestation verify artifact.tar.gz --owner secure-action-org-2026-1
 #
-# Trigger: push a semver tag, e.g.:  git tag v1.0.0 && git push --tags
+# Trigger: push a semver tag, e.g.: git tag v1.0.0 && git push --tags
 
 name: slsa-provenance
 
@@ -24,9 +21,9 @@ jobs:
     name: Build and attest artifact
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # create GitHub release + upload artifact
-      id-token: write     # Sigstore OIDC keyless signing
-      attestations: write # write provenance attestation to repo
+      contents: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout
@@ -37,21 +34,19 @@ jobs:
       - name: Build artifact
         run: tar czf artifact.tar.gz README.md .github/
 
-      - name: Generate SLSA provenance attestation
+      - name: Generate provenance attestation
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
         id: attest
         with:
           subject-path: artifact.tar.gz
 
-      - name: Create GitHub release with artifact
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
           gh release create "$TAG" artifact.tar.gz \
             --title "$TAG" \
-            --notes "Artifact with SLSA provenance attestation.
+            --notes "Verify provenance: gh attestation verify artifact.tar.gz --owner secure-action-org-2026-1"
 
-Verify with:
-  gh attestation verify artifact.tar.gz --owner secure-action-org-2026-1"
 
